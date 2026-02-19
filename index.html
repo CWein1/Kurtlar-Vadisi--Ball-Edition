@@ -3,188 +3,230 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Kurtlar Vadisi - Mobile Edition</title>
+    <title>Kurtlar Vadisi - CW Edition</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
     <style>
-        :root { --vadi-gold: #c5a059; }
-        body, html { 
-            margin: 0; padding: 0; width: 100%; height: 100%; 
-            overflow: hidden; background: #000; 
-            font-family: 'Times New Roman', serif;
-            touch-action: none; /* Ekranın sürüşməsini (scroll) ləğv edir */
+        :root { --vadi-gold: #c5a059; --vadi-dark: #0a0a0a; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background: #000; font-family: 'Times New Roman', serif; touch-action: none; }
+        
+        /* GİRİŞ ANİMASİYASI */
+        .fade-in { animation: fadeInEffect 1.5s forwards; }
+        @keyframes fadeInEffect { from { opacity: 0; } to { opacity: 1; } }
+
+        /* ANA MENYU */
+        #menu-overlay { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: radial-gradient(circle, #1a1a1a 0%, #000 100%);
+            z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; 
+            text-align: center; padding: 20px; transition: opacity 0.8s ease;
         }
-        #bg-text { position: absolute; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 8vw; color: rgba(197, 160, 89, 0.03); z-index: 0; pointer-events: none; white-space: nowrap; animation: floatText 30s infinite linear; }
-        @keyframes floatText { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
         
-        #ui-layer { position: absolute; top: 10px; width: 100%; display: flex; justify-content: space-around; z-index: 100; pointer-events: none; }
-        .stat-box { background: rgba(10, 25, 47, 0.9); border: 1px solid var(--vadi-gold); padding: 5px 15px; border-radius: 4px; color: var(--vadi-gold); text-align: center; font-size: 14px; }
-        #next-ball-preview { width: 35px; height: 35px; border-radius: 50%; border: 1px solid var(--vadi-gold); margin: 3px auto; background-size: cover; background-position: center; }
+        .cw-bg-text {
+            position: absolute; font-size: 15vw; color: rgba(255, 255, 255, 0.03);
+            font-weight: 900; z-index: -1; pointer-events: none; letter-spacing: 10px;
+        }
+
+        #polat-quote { color: #aaa; font-style: italic; font-size: 14px; max-width: 320px; margin: 20px 0; opacity: 0; animation: fadeInEffect 2s 0.5s forwards; }
+
+        /* BUTON ANİMASİYALARI */
+        .btn { 
+            background: var(--vadi-gold); color: #000; border: none; padding: 14px 30px; 
+            font-size: 16px; font-weight: bold; cursor: pointer; margin: 10px; 
+            border-radius: 4px; text-transform: uppercase; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 4px 0px #8a6d3b; position: relative;
+        }
+        .btn:hover { transform: scale(1.05); background: #dec084; box-shadow: 0 6px 15px rgba(197, 160, 89, 0.4); }
+        .btn:active { transform: translateY(3px); box-shadow: 0 1px 0px #8a6d3b; }
+
+        /* OYUN ARXA PLANI */
+        #game-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #02040a; display: none; z-index: 1; }
+        .moon { position: absolute; top: 60px; right: 50px; width: 70px; height: 70px; background: #fffde8; border-radius: 50%; box-shadow: 0 0 60px 20px rgba(255, 255, 255, 0.15); z-index: 2; animation: glow 4s infinite alternate; }
+        @keyframes glow { from { box-shadow: 0 0 40px 10px rgba(255, 255, 255, 0.1); } to { box-shadow: 0 0 70px 25px rgba(255, 255, 255, 0.25); } }
         
-        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 4px solid var(--vadi-gold); box-sizing: border-box; text-align: center; padding: 20px; }
-        .btn { background: var(--vadi-gold); color: #000; border: none; padding: 15px 30px; font-size: 20px; font-weight: bold; cursor: pointer; margin: 10px; text-transform: uppercase; border-radius: 5px; }
-        
-        #game-canvas-container { position: relative; z-index: 10; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: flex-end; }
-        canvas { max-width: 100%; max-height: 90vh; }
+        .mist { position: absolute; width: 400%; height: 100%; background: url('https://www.transparenttextures.com/patterns/asfalt-dark.png'); opacity: 0.35; z-index: 3; animation: mistMove 50s linear infinite; }
+        @keyframes mistMove { from { transform: translateX(0); } to { transform: translateX(-25%); } }
+
+        /* UI */
+        #ui-layer { position: absolute; top: 15px; width: 100%; display: flex; justify-content: space-around; z-index: 100; pointer-events: none; opacity: 0; }
+        .stat-box { background: rgba(0, 0, 0, 0.9); border: 1.5px solid var(--vadi-gold); padding: 8px 15px; border-radius: 4px; color: var(--vadi-gold); text-align: center; }
+
+        #marquee-container { position: absolute; bottom: 0; width: 100%; background: rgba(0,0,0,0.9); color: var(--vadi-gold); padding: 6px 0; z-index: 50; border-top: 1px solid var(--vadi-gold); }
+        .marquee-text { display: inline-block; white-space: nowrap; animation: marquee 25s linear infinite; font-size: 11px; letter-spacing: 2px; }
+        @keyframes marquee { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+
+        #game-canvas-container { position: relative; z-index: 10; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: flex-start; padding-top: 70px; }
+        .end-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 2000; display: none; flex-direction: column; align-items: center; justify-content: center; border: 6px solid var(--vadi-gold); }
     </style>
 </head>
-<body>
+<body class="fade-in">
 
-    <div id="bg-text">VADİ • MOBİL OPERASYON</div>
+    <div id="game-bg"><div class="moon"></div><div class="mist"></div></div>
 
-    <div id="menu-overlay" class="overlay">
-        <h1 style="color: var(--vadi-gold); font-size: 40px; letter-spacing: 5px;">VADİ</h1>
-        <p style="color: white; margin-bottom: 20px;">Xarakterləri birləşdir, Polata çat!</p>
-        <button class="btn" onclick="startGame()">OPERASYONU BAŞLAT</button>
+    <div id="menu-overlay">
+        <div class="cw-bg-text">CW STUDIO</div>
+        <h1 id="vadi-title" style="color: var(--vadi-gold); font-size: 50px; letter-spacing: 12px; margin: 0; cursor: pointer; user-select: none;">VADİ</h1>
+        <div id="polat-quote">"İtaatsizliğin raconunu biz koymadık ama biz uygularız."</div>
+        <div style="color: var(--vadi-gold); font-size: 16px; margin-bottom: 20px;">EN YÜKSEK SKOR: <span id="high-score-val">0</span></div>
+        <button class="btn" id="start-btn">OPERASYONU BAŞLAT</button>
+        <a href="https://www.tiktok.com/@cwstudio_" target="_blank" class="btn" style="background: transparent; color: #ff0050; border: 1px solid #ff0050; box-shadow: none;">TIKTOK</a>
     </div>
 
-    <div id="game-over-overlay" class="overlay" style="display:none;">
-        <h1 style="color: #fff; font-size: 30px;">HESABIN KESİLDİ!</h1>
-        <button class="btn" onclick="location.reload()">YENİDEN DENE</button>
+    <div id="game-over-overlay" class="end-screen">
+        <h1 style="color: #ff3333; font-size: 32px; letter-spacing: 3px;">KALEMİN KIRILDI!</h1>
+        <button class="btn" onclick="location.reload()">TEKRAR DENE</button>
     </div>
 
     <div id="ui-layer">
-        <div class="stat-box">XAL<br><span id="score" style="font-size:20px;">0</span></div>
-        <div class="stat-box">SIRADAKİ<div id="next-ball-preview"></div></div>
+        <div class="stat-box">SKOR<br><span id="score" style="font-size:20px; font-weight:bold;">0</span></div>
+        <div class="stat-box">SIRADAKİ<div id="next-ball-preview" style="width:35px; height:35px; border-radius:50%; margin:5px auto; border:1px solid var(--vadi-gold); background-size:cover;"></div></div>
+    </div>
+
+    <div id="marquee-container">
+        <div class="marquee-text">CW STUDIO SUNAR • KURTLAR VADİSİ BALL EDITION • SADECE ÖLÜLER GÖRÜR • CW STUDIO</div>
     </div>
 
     <div id="game-canvas-container"></div>
 
-    <audio id="vadi-effect" preload="auto">
-        <source src="https://www.soundboard.com/handler/DownLoadTrack.ashx?cliptoken=6699318a-6617-4950-8b9a-47137b7890b9" type="audio/mpeg">
-    </audio>
-    <audio id="polat-music" preload="auto" loop>
-        <source src="https://www.soundboard.com/handler/DownLoadTrack.ashx?cliptoken=f9984918-0248-4389-9b9a-416196238b90" type="audio/mpeg">
-    </audio>
+    <audio id="vadi-effect" src="https://www.soundboard.com/handler/DownLoadTrack.ashx?cliptoken=6699318a-6617-4950-8b9a-47137b7890b9" preload="auto"></audio>
 
 <script>
-    const { Engine, Render, Runner, World, Bodies, Events, Composite } = Matter;
+    window.onload = function() {
+        let highScore = localStorage.getItem('vadiHS') || 0;
+        document.getElementById('high-score-val').innerText = highScore;
 
-    const ballTypes = [
-        { radius: 16, score: 2, sprite: 'Elif EYLÜL.jpg' },
-        { radius: 22, score: 4, sprite: 'Erhan.jpg' },
-        { radius: 28, score: 8, sprite: 'indir.jpg' }, 
-        { radius: 34, score: 12, sprite: 'cerrah paşa halit.jpg' },
-        { radius: 40, score: 16, sprite: 'indir (2).jpg' },
-        { radius: 46, score: 20, sprite: 'indir (5).jpg' },
-        { radius: 52, score: 25, sprite: 'indir (6).jpg' },
-        { radius: 58, score: 32, sprite: 'Seyfo Dayı.jpg' },
-        { radius: 64, score: 40, sprite: 'indir (4).jpg' },
-        { radius: 70, score: 50, sprite: 'Osman Wöber,  #Aileİşi.jpg' },
-        { radius: 76, score: 64, sprite: 'Abdülhey.jpg' },
-        { radius: 82, score: 80, sprite: 'Yalçın Bulut.jpg' },
-        { radius: 88, score: 100, sprite: 'Memati BAŞ.jpg' },
-        { radius: 95, score: 150, sprite: 'Laz Ziya.jpg' },
-        { radius: 102, score: 256, sprite: 'Süleyman ÇAKIR.jpg' },
-        { radius: 110, score: 400, sprite: 'Pala wallpaper.jpg' },
-        { radius: 120, score: 600, sprite: 'İskender Büyük (KVP).jpg' },
-        { radius: 135, score: 1000, sprite: 'Kurtlar Vadisi Mehmet Karahanlı.jpg' },
-        { radius: 150, score: 2000, sprite: 'Polat Alemdar.jpg' }
-    ];
+        const { Engine, Render, Runner, World, Bodies, Events, Composite } = Matter;
+        let engine, render, runner, nextIdx = 0, currentScore = 0, canDrop = true, isGameOver = false;
 
-    let engine, render, runner, nextIdx = 0, currentScore = 0, canDrop = true, isGameOver = false;
+        const ballTypes = [
+            { radius: 18, score: 2, sprite: 'Elif EYLÜL.jpg' }, { radius: 24, score: 4, sprite: 'Erhan.jpg' },
+            { radius: 30, score: 8, sprite: 'indir.jpg' }, { radius: 36, score: 12, sprite: 'cerrah paşa halit.jpg' },
+            { radius: 42, score: 16, sprite: 'indir (2).jpg' }, { radius: 48, score: 20, sprite: 'indir (5).jpg' },
+            { radius: 54, score: 25, sprite: 'indir (6).jpg' }, { radius: 60, score: 32, sprite: 'Seyfo Dayı.jpg' },
+            { radius: 66, score: 40, sprite: 'indir (4).jpg' }, { radius: 72, score: 50, sprite: 'Osman Wöber,  #Aileİşi.jpg' },
+            { radius: 78, score: 64, sprite: 'Abdülhey.jpg' }, { radius: 84, score: 80, sprite: 'Yalçın Bulut.jpg' },
+            { radius: 90, score: 100, sprite: 'Memati BAŞ.jpg' }, { radius: 96, score: 150, sprite: 'Laz Ziya.jpg' },
+            { radius: 104, score: 256, sprite: 'Süleyman ÇAKIR.jpg' }, { radius: 112, score: 400, sprite: 'Pala wallpaper.jpg' },
+            { radius: 122, score: 600, sprite: 'İskender Büyük (KVP).jpg' }, { radius: 135, score: 1000, sprite: 'Kurtlar Vadisi Mehmet Karahanlı.jpg' },
+            { radius: 150, score: 2000, sprite: 'Polat Alemdar.jpg' }
+        ];
 
-    function startGame() {
-        document.getElementById('menu-overlay').style.display = 'none';
-        // Səsi aktivləşdir
-        document.getElementById('vadi-effect').play().then(()=>document.getElementById('vadi-effect').pause());
-        init();
-    }
-
-    function init() {
-        engine = Engine.create();
-        
-        // Telefon ekranının enini götürürük
-        const screenWidth = Math.min(window.innerWidth, 450);
-        const screenHeight = window.innerHeight * 0.8;
-
-        render = Render.create({
-            element: document.getElementById('game-canvas-container'),
-            engine: engine,
-            options: { width: screenWidth, height: screenHeight, wireframes: false, background: 'transparent' }
-        });
-
-        const wallStyle = { isStatic: true, render: { fillStyle: '#111', strokeStyle: '#c5a059', lineWidth: 4 } };
-        World.add(engine.world, [
-            Bodies.rectangle(screenWidth/2, screenHeight - 10, screenWidth, 20, wallStyle),
-            Bodies.rectangle(5, screenHeight/2, 10, screenHeight, wallStyle),
-            Bodies.rectangle(screenWidth - 5, screenHeight/2, 10, screenHeight, wallStyle)
-        ]);
-
-        Render.run(render);
-        runner = Runner.create();
-        Runner.run(runner, engine);
-
-        nextIdx = Math.floor(Math.random() * 4);
-        updateUI();
-
-        // MOBİL TOXUNUŞ VƏ SİÇAN DƏSTƏYİ
-        const handleAction = (e) => {
-            if (!canDrop || isGameOver) return;
-            let clientX;
-            if (e.type === 'touchstart') {
-                clientX = e.touches[0].clientX;
-            } else {
-                clientX = e.clientX;
+        // HİLE KODU DÜZƏLDİLDİ
+        let clickTime = 0;
+        let clickCount = 0;
+        document.getElementById('vadi-title').addEventListener('click', () => {
+            const now = Date.now();
+            if (now - clickTime < 400) { clickCount++; } else { clickCount = 1; }
+            clickTime = now;
+            if (clickCount === 3) {
+                nextIdx = ballTypes.length - 1; 
+                updateUI();
+                clickCount = 0;
+                alert("OPERASYON: POLAT ALEMDAR!");
             }
-            const rect = render.canvas.getBoundingClientRect();
-            dropBall(clientX - rect.left, screenWidth);
-        };
-
-        render.canvas.addEventListener('mousedown', handleAction);
-        render.canvas.addEventListener('touchstart', (e) => {
-            e.preventDefault(); // Səhifənin titrəməsini önləyir
-            handleAction(e);
         });
 
-        Events.on(engine, 'collisionStart', (event) => {
-            event.pairs.forEach((pair) => {
-                const { bodyA, bodyB } = pair;
-                if (bodyA.label === bodyB.label && bodyA.label.startsWith('vadi_')) {
-                    const idx = parseInt(bodyA.label.split('_')[1]);
-                    if (idx < ballTypes.length - 1) {
-                        const midX = (bodyA.position.x + bodyB.position.x) / 2;
-                        const midY = (bodyA.position.y + bodyB.position.y) / 2;
-                        World.remove(engine.world, [bodyA, bodyB]);
-                        World.add(engine.world, createBall(midX, midY, idx + 1));
-                        currentScore += ballTypes[idx + 1].score;
-                        updateUI();
-                    }
-                }
+        document.getElementById('start-btn').addEventListener('click', () => {
+            document.getElementById('menu-overlay').style.opacity = '0';
+            setTimeout(() => {
+                document.getElementById('menu-overlay').style.display = 'none';
+                document.getElementById('game-bg').style.display = 'block';
+                document.getElementById('ui-layer').style.opacity = '1';
+                initGame();
+            }, 800);
+        });
+
+        function initGame() {
+            engine = Engine.create();
+            const sw = Math.min(window.innerWidth, 420);
+            const sh = window.innerHeight * 0.82;
+
+            render = Render.create({
+                element: document.getElementById('game-canvas-container'),
+                engine: engine,
+                options: { width: sw, height: sh, wireframes: false, background: 'transparent' }
             });
-        });
-    }
 
-    function createBall(x, y, idx) {
-        const type = ballTypes[idx];
-        const ball = Bodies.circle(x, y, type.radius, {
-            label: 'vadi_' + idx,
-            restitution: 0.3,
-            render: {
-                sprite: {
-                    texture: type.sprite,
-                    xScale: (type.radius * 2) / 380,
-                    yScale: (type.radius * 2) / 380
-                }
-            }
-        });
-        ball.activeTime = Date.now();
-        return ball;
-    }
+            const wallProps = { isStatic: true, render: { fillStyle: 'rgba(255,255,255,0.05)', strokeStyle: '#c5a059', lineWidth: 2 } };
+            World.add(engine.world, [
+                Bodies.rectangle(sw/2, sh-10, sw, 20, wallProps),
+                Bodies.rectangle(5, sh/2, 10, sh, wallProps),
+                Bodies.rectangle(sw-5, sh/2, 10, sh, wallStyle = wallProps)
+            ]);
 
-    function dropBall(x, cw) {
-        canDrop = false;
-        const rad = ballTypes[nextIdx].radius;
-        const safeX = Math.max(rad + 10, Math.min(cw - rad - 10, x));
-        World.add(engine.world, createBall(safeX, 50, nextIdx));
-        nextIdx = Math.floor(Math.random() * 4);
-        updateUI();
-        setTimeout(() => { canDrop = true; }, 600);
-    }
+            Render.run(render);
+            runner = Runner.create();
+            Runner.run(runner, engine);
+            nextIdx = Math.floor(Math.random() * 3);
+            updateUI();
 
-    function updateUI() {
-        document.getElementById('score').innerText = currentScore;
-        document.getElementById('next-ball-preview').style.backgroundImage = `url('${ballTypes[nextIdx].sprite}')`;
-    }
+            const handleDrop = (e) => {
+                if (!canDrop || isGameOver) return;
+                const clientX = e.type.startsWith('touch') ? e.touches[0].clientX : e.clientX;
+                const rect = render.canvas.getBoundingClientRect();
+                dropBall(clientX - rect.left, sw);
+            };
+
+            render.canvas.addEventListener('mousedown', handleDrop);
+            render.canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleDrop(e); }, {passive: false});
+
+            Events.on(engine, 'collisionStart', (event) => {
+                event.pairs.forEach(pair => {
+                    const { bodyA, bodyB } = pair;
+                    if (bodyA.label === bodyB.label && bodyA.label.startsWith('v_')) {
+                        const idx = parseInt(bodyA.label.split('_')[1]);
+                        if (idx < ballTypes.length - 1) {
+                            const newX = (bodyA.position.x + bodyB.position.x) / 2;
+                            const newY = (bodyA.position.y + bodyB.position.y) / 2;
+                            World.remove(engine.world, [bodyA, bodyB]);
+                            World.add(engine.world, createBall(newX, newY, idx + 1));
+                            currentScore += ballTypes[idx+1].score;
+                            updateUI();
+                            document.getElementById('vadi-effect').cloneNode(true).play().catch(()=>{});
+                        }
+                    }
+                });
+            });
+
+            Events.on(engine, 'afterUpdate', () => {
+                if (isGameOver) return;
+                Composite.allBodies(engine.world).forEach(body => {
+                    if (body.label && body.label.startsWith('v_') && body.position.y < 80) {
+                        if (Math.abs(body.velocity.y) < 0.5) {
+                            if (!body.wait) body.wait = Date.now();
+                            if (Date.now() - body.wait > 1500) {
+                                isGameOver = true;
+                                if (currentScore > highScore) localStorage.setItem('vadiHS', currentScore);
+                                document.getElementById('game-over-overlay').style.display = 'flex';
+                            }
+                        }
+                    } else { body.wait = null; }
+                });
+            });
+        }
+
+        function createBall(x, y, idx) {
+            const t = ballTypes[idx];
+            return Bodies.circle(x, y, t.radius, {
+                label: 'v_' + idx, restitution: 0.3, friction: 0.1,
+                render: { sprite: { texture: t.sprite, xScale: (t.radius*2)/380, yScale: (t.radius*2)/380 } }
+            });
+        }
+
+        function dropBall(x, cw) {
+            canDrop = false;
+            const rad = ballTypes[nextIdx].radius;
+            const safeX = Math.max(rad + 12, Math.min(cw - rad - 12, x));
+            World.add(engine.world, createBall(safeX, 40, nextIdx));
+            nextIdx = Math.floor(Math.random() * 4);
+            updateUI();
+            setTimeout(() => canDrop = true, 500);
+        }
+
+        function updateUI() {
+            document.getElementById('score').innerText = currentScore;
+            document.getElementById('next-ball-preview').style.backgroundImage = `url('${ballTypes[nextIdx].sprite}')`;
+        }
+    };
 </script>
 </body>
 </html>
