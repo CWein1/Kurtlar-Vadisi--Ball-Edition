@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="az">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kurtlar Vadisi - Mobile Edition</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <style>
+        :root { --vadi-gold: #c5a059; }
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            overflow: hidden; background: #000; 
+            font-family: 'Times New Roman', serif;
+            touch-action: none; /* Ekranın sürüşməsini (scroll) ləğv edir */
+        }
+        #bg-text { position: absolute; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 8vw; color: rgba(197, 160, 89, 0.03); z-index: 0; pointer-events: none; white-space: nowrap; animation: floatText 30s infinite linear; }
+        @keyframes floatText { 0% { transform: translateX(100%); } 100% { transform: translateX(-100%); } }
+        
+        #ui-layer { position: absolute; top: 10px; width: 100%; display: flex; justify-content: space-around; z-index: 100; pointer-events: none; }
+        .stat-box { background: rgba(10, 25, 47, 0.9); border: 1px solid var(--vadi-gold); padding: 5px 15px; border-radius: 4px; color: var(--vadi-gold); text-align: center; font-size: 14px; }
+        #next-ball-preview { width: 35px; height: 35px; border-radius: 50%; border: 1px solid var(--vadi-gold); margin: 3px auto; background-size: cover; background-position: center; }
+        
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.95); z-index: 1000; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 4px solid var(--vadi-gold); box-sizing: border-box; text-align: center; padding: 20px; }
+        .btn { background: var(--vadi-gold); color: #000; border: none; padding: 15px 30px; font-size: 20px; font-weight: bold; cursor: pointer; margin: 10px; text-transform: uppercase; border-radius: 5px; }
+        
+        #game-canvas-container { position: relative; z-index: 10; width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: flex-end; }
+        canvas { max-width: 100%; max-height: 90vh; }
+    </style>
+</head>
+<body>
+
+    <div id="bg-text">VADİ • MOBİL OPERASYON</div>
+
+    <div id="menu-overlay" class="overlay">
+        <h1 style="color: var(--vadi-gold); font-size: 40px; letter-spacing: 5px;">VADİ</h1>
+        <p style="color: white; margin-bottom: 20px;">Xarakterləri birləşdir, Polata çat!</p>
+        <button class="btn" onclick="startGame()">OPERASYONU BAŞLAT</button>
+    </div>
+
+    <div id="game-over-overlay" class="overlay" style="display:none;">
+        <h1 style="color: #fff; font-size: 30px;">HESABIN KESİLDİ!</h1>
+        <button class="btn" onclick="location.reload()">YENİDEN DENE</button>
+    </div>
+
+    <div id="ui-layer">
+        <div class="stat-box">XAL<br><span id="score" style="font-size:20px;">0</span></div>
+        <div class="stat-box">SIRADAKİ<div id="next-ball-preview"></div></div>
+    </div>
+
+    <div id="game-canvas-container"></div>
+
+    <audio id="vadi-effect" preload="auto">
+        <source src="https://www.soundboard.com/handler/DownLoadTrack.ashx?cliptoken=6699318a-6617-4950-8b9a-47137b7890b9" type="audio/mpeg">
+    </audio>
+    <audio id="polat-music" preload="auto" loop>
+        <source src="https://www.soundboard.com/handler/DownLoadTrack.ashx?cliptoken=f9984918-0248-4389-9b9a-416196238b90" type="audio/mpeg">
+    </audio>
+
+<script>
+    const { Engine, Render, Runner, World, Bodies, Events, Composite } = Matter;
+
+    const ballTypes = [
+        { radius: 16, score: 2, sprite: 'Elif EYLÜL.jpg' },
+        { radius: 22, score: 4, sprite: 'Erhan.jpg' },
+        { radius: 28, score: 8, sprite: 'indir.jpg' }, 
+        { radius: 34, score: 12, sprite: 'cerrah paşa halit.jpg' },
+        { radius: 40, score: 16, sprite: 'indir (2).jpg' },
+        { radius: 46, score: 20, sprite: 'indir (5).jpg' },
+        { radius: 52, score: 25, sprite: 'indir (6).jpg' },
+        { radius: 58, score: 32, sprite: 'Seyfo Dayı.jpg' },
+        { radius: 64, score: 40, sprite: 'indir (4).jpg' },
+        { radius: 70, score: 50, sprite: 'Osman Wöber,  #Aileİşi.jpg' },
+        { radius: 76, score: 64, sprite: 'Abdülhey.jpg' },
+        { radius: 82, score: 80, sprite: 'Yalçın Bulut.jpg' },
+        { radius: 88, score: 100, sprite: 'Memati BAŞ.jpg' },
+        { radius: 95, score: 150, sprite: 'Laz Ziya.jpg' },
+        { radius: 102, score: 256, sprite: 'Süleyman ÇAKIR.jpg' },
+        { radius: 110, score: 400, sprite: 'Pala wallpaper.jpg' },
+        { radius: 120, score: 600, sprite: 'İskender Büyük (KVP).jpg' },
+        { radius: 135, score: 1000, sprite: 'Kurtlar Vadisi Mehmet Karahanlı.jpg' },
+        { radius: 150, score: 2000, sprite: 'Polat Alemdar.jpg' }
+    ];
+
+    let engine, render, runner, nextIdx = 0, currentScore = 0, canDrop = true, isGameOver = false;
+
+    function startGame() {
+        document.getElementById('menu-overlay').style.display = 'none';
+        // Səsi aktivləşdir
+        document.getElementById('vadi-effect').play().then(()=>document.getElementById('vadi-effect').pause());
+        init();
+    }
+
+    function init() {
+        engine = Engine.create();
+        
+        // Telefon ekranının enini götürürük
+        const screenWidth = Math.min(window.innerWidth, 450);
+        const screenHeight = window.innerHeight * 0.8;
+
+        render = Render.create({
+            element: document.getElementById('game-canvas-container'),
+            engine: engine,
+            options: { width: screenWidth, height: screenHeight, wireframes: false, background: 'transparent' }
+        });
+
+        const wallStyle = { isStatic: true, render: { fillStyle: '#111', strokeStyle: '#c5a059', lineWidth: 4 } };
+        World.add(engine.world, [
+            Bodies.rectangle(screenWidth/2, screenHeight - 10, screenWidth, 20, wallStyle),
+            Bodies.rectangle(5, screenHeight/2, 10, screenHeight, wallStyle),
+            Bodies.rectangle(screenWidth - 5, screenHeight/2, 10, screenHeight, wallStyle)
+        ]);
+
+        Render.run(render);
+        runner = Runner.create();
+        Runner.run(runner, engine);
+
+        nextIdx = Math.floor(Math.random() * 4);
+        updateUI();
+
+        // MOBİL TOXUNUŞ VƏ SİÇAN DƏSTƏYİ
+        const handleAction = (e) => {
+            if (!canDrop || isGameOver) return;
+            let clientX;
+            if (e.type === 'touchstart') {
+                clientX = e.touches[0].clientX;
+            } else {
+                clientX = e.clientX;
+            }
+            const rect = render.canvas.getBoundingClientRect();
+            dropBall(clientX - rect.left, screenWidth);
+        };
+
+        render.canvas.addEventListener('mousedown', handleAction);
+        render.canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault(); // Səhifənin titrəməsini önləyir
+            handleAction(e);
+        });
+
+        Events.on(engine, 'collisionStart', (event) => {
+            event.pairs.forEach((pair) => {
+                const { bodyA, bodyB } = pair;
+                if (bodyA.label === bodyB.label && bodyA.label.startsWith('vadi_')) {
+                    const idx = parseInt(bodyA.label.split('_')[1]);
+                    if (idx < ballTypes.length - 1) {
+                        const midX = (bodyA.position.x + bodyB.position.x) / 2;
+                        const midY = (bodyA.position.y + bodyB.position.y) / 2;
+                        World.remove(engine.world, [bodyA, bodyB]);
+                        World.add(engine.world, createBall(midX, midY, idx + 1));
+                        currentScore += ballTypes[idx + 1].score;
+                        updateUI();
+                    }
+                }
+            });
+        });
+    }
+
+    function createBall(x, y, idx) {
+        const type = ballTypes[idx];
+        const ball = Bodies.circle(x, y, type.radius, {
+            label: 'vadi_' + idx,
+            restitution: 0.3,
+            render: {
+                sprite: {
+                    texture: type.sprite,
+                    xScale: (type.radius * 2) / 380,
+                    yScale: (type.radius * 2) / 380
+                }
+            }
+        });
+        ball.activeTime = Date.now();
+        return ball;
+    }
+
+    function dropBall(x, cw) {
+        canDrop = false;
+        const rad = ballTypes[nextIdx].radius;
+        const safeX = Math.max(rad + 10, Math.min(cw - rad - 10, x));
+        World.add(engine.world, createBall(safeX, 50, nextIdx));
+        nextIdx = Math.floor(Math.random() * 4);
+        updateUI();
+        setTimeout(() => { canDrop = true; }, 600);
+    }
+
+    function updateUI() {
+        document.getElementById('score').innerText = currentScore;
+        document.getElementById('next-ball-preview').style.backgroundImage = `url('${ballTypes[nextIdx].sprite}')`;
+    }
+</script>
+</body>
+</html>
